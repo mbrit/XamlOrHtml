@@ -13,6 +13,7 @@ namespace XamlOrHtml
         internal string DisplayName { get; private set; }
         internal string PackageRootFolder { get; private set; }
         internal bool FoundStartPage { get; private set; }
+        internal bool MarkedUp { get; private set; }
 
         internal List<string> XamlFiles { get; private set; }
         internal List<string> JsFiles { get; private set; }
@@ -52,16 +53,25 @@ namespace XamlOrHtml
 
         private void WalkFiles(DirectoryInfo folder)
         {
-            foreach (var file in folder.GetFiles())
+            try
             {
-                if (string.Compare(file.Extension, ".xaml", true) == 0)
-                    this.XamlFiles.Add(file.FullName);
-                else if (string.Compare(file.Extension, ".js", true) == 0)
-                    this.JsFiles.Add(file.FullName);
-            }
+                foreach (var file in folder.GetFiles())
+                {
+                    if (string.Compare(file.Extension, ".xaml", true) == 0 || string.Compare(file.Extension, ".xbf", true) == 0)
+                        this.XamlFiles.Add(file.FullName);
+                    else if (string.Compare(file.Extension, ".js", true) == 0)
+                        this.JsFiles.Add(file.FullName);
+                    else if (string.Compare(file.Name, "MarkedUp.winmd") == 0)
+                        this.MarkedUp = true;
+                }
 
-            foreach (var child in folder.GetDirectories())
-                this.WalkFiles(child);
+                foreach (var child in folder.GetDirectories())
+                    this.WalkFiles(child);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         internal PackageType Type

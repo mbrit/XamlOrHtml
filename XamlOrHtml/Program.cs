@@ -49,11 +49,11 @@ namespace XamlOrHtml
                 }
 
                 // render...
-                StringBuilder builder = new StringBuilder();
-                RenderResult(builder, "Microsoft", msXaml, msHtml, msUnknown);
-                builder.Append("\r\n");
-                RenderResult(builder, "Non-Microsoft", nonMsXaml, nonMsHtml, nonMsUnknown);
-                MessageBox.Show(builder.ToString());
+                //StringBuilder builder = new StringBuilder();
+                //RenderResult(builder, "Microsoft", msXaml, msHtml, msUnknown);
+                //builder.Append("\r\n");
+                //RenderResult(builder, "Non-Microsoft", nonMsXaml, nonMsHtml, nonMsUnknown);
+                ////MessageBox.Show(builder.ToString());
 
                 // show...
                 Process.Start(temp);
@@ -129,12 +129,12 @@ namespace XamlOrHtml
             temp = Path.GetTempFileName() + ".csv";
             using(var writer = new StreamWriter(temp))
             {
-                writer.WriteLine("PackageId,DisplayName,RootFolder,NumXaml,NumJs,FoundStartPage,Type");
+                writer.WriteLine("PackageId,DisplayName,RootFolder,NumXaml,NumJs,FoundStartPage,Type,MarkedUp");
 
                 foreach (var package in packages)
                 {
-                    writer.WriteLine("\"{0}\",\"{1}\",\"{2}\",\"{3}\",\"{4}\",\"{5}\",\"{6}\"", package.PackageId, package.DisplayName, 
-                        package.PackageRootFolder, package.XamlFiles.Count, package.JsFiles.Count, package.FoundStartPage, package.Type);
+                    writer.WriteLine("\"{0}\",\"{1}\",\"{2}\",\"{3}\",\"{4}\",\"{5}\",\"{6}\",\"{7}\"", package.PackageId, package.DisplayName, 
+                        package.PackageRootFolder, package.XamlFiles.Count, package.JsFiles.Count, package.FoundStartPage, package.Type, package.MarkedUp);
                 }
             }
 
