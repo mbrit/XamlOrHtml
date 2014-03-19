@@ -1,11 +1,9 @@
-﻿using Microsoft.Win32;
+﻿using System.Linq;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
 
 namespace XamlOrHtml
 {
@@ -16,16 +14,17 @@ namespace XamlOrHtml
             try
             {
                 // walk...
-                string temp = null;
-                var packages = WalkPackages(ref temp);
+                string temp;
+                var packages = WalkPackages(out temp);
 
                 // count...
                 int msXaml = 0;
                 int msHtml = 0;
-                int msUnknown = 0;
+                int msDirectX = 0;
                 int nonMsXaml = 0;
                 int nonMsHtml = 0;
-                int nonMsUnknown = 0;
+                int nonMsDirectX = 0;
+
                 foreach (var package in packages)
                 {
                     if (package.IsMicrosoft)
@@ -34,8 +33,8 @@ namespace XamlOrHtml
                             msXaml++;
                         else if (package.Type == PackageType.Html)
                             msHtml++;
-                        else if (package.Type == PackageType.Unknown)
-                            msUnknown++;
+                        else if (package.Type == PackageType.DirectX)
+                            msDirectX++;
                     }
                     else
                     {
@@ -43,8 +42,8 @@ namespace XamlOrHtml
                             nonMsXaml++;
                         else if (package.Type == PackageType.Html)
                             nonMsHtml++;
-                        else if (package.Type == PackageType.Unknown)
-                            nonMsUnknown++;
+                        else if (package.Type == PackageType.DirectX)
+                            nonMsDirectX++;
                     }
                 }
 
@@ -69,40 +68,41 @@ namespace XamlOrHtml
             }
         }
 
-        private static void RenderResult(StringBuilder builder, string name, int xaml, int html, int unknown)
-        {
-            decimal total = (decimal)(xaml + html + unknown);
-            decimal percentageXaml = 0M;
-            decimal percentageHtml = 0M;
-            decimal percentageUnknown = 0M;
-            if(total > 0)
-            {
-                percentageXaml = (decimal)xaml / total;
-                percentageHtml = (decimal)html / total;
-                percentageUnknown = (decimal)unknown / total;
-            }
+        //private static void RenderResult(StringBuilder builder, string name, int xaml, int html, int directx)
+        //{
+        //    decimal total = xaml + html + directx;
+        //    decimal percentageXaml = 0M;
+        //    decimal percentageHtml = 0M;
+        //    decimal percentageUnknown = 0M;
 
-            // ok...
-            builder.Append(name);
-            builder.Append(" --> ");
-            builder.Append("XAML: ");
-            builder.Append(xaml);
-            builder.Append(" (");
-            builder.Append((percentageXaml * 100).ToString("n0"));
-            builder.Append("%), ");
-            builder.Append("HTML: ");
-            builder.Append(html);
-            builder.Append(" (");
-            builder.Append((percentageHtml * 100).ToString("n0"));
-            builder.Append("%), ");
-            builder.Append("Unknown: ");
-            builder.Append(unknown);
-            builder.Append(" (");
-            builder.Append((percentageUnknown * 100).ToString("n0"));
-            builder.Append("%)");
-        }
+        //    if(total > 0)
+        //    {
+        //        percentageXaml = xaml / total;
+        //        percentageHtml = html / total;
+        //        percentageUnknown = directx / total;
+        //    }
 
-        private static List<PackageInfo> WalkPackages(ref string temp)
+        //    // ok...
+        //    builder.Append(name);
+        //    builder.Append(" --> ");
+        //    builder.Append("XAML: ");
+        //    builder.Append(xaml);
+        //    builder.Append(" (");
+        //    builder.Append((percentageXaml * 100).ToString("n0"));
+        //    builder.Append("%), ");
+        //    builder.Append("HTML: ");
+        //    builder.Append(html);
+        //    builder.Append(" (");
+        //    builder.Append((percentageHtml * 100).ToString("n0"));
+        //    builder.Append("%), ");
+        //    builder.Append("DirectX: ");
+        //    builder.Append(directx);
+        //    builder.Append(" (");
+        //    builder.Append((percentageUnknown * 100).ToString("n0"));
+        //    builder.Append("%)");
+        //}
+
+        private static IEnumerable<PackageInfo> WalkPackages(out string temp)
         {
             Console.WriteLine("Walking packages...");
 
@@ -110,31 +110,34 @@ namespace XamlOrHtml
             var packages = new List<PackageInfo>();
             using (var key = Registry.ClassesRoot.OpenSubKey(@"Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages"))
             {
-                foreach (var packageName in key.GetSubKeyNames())
-                {
-                    Console.WriteLine("..." + packageName);
-
-                    using (var packageKey = key.OpenSubKey(packageName))
+                if (key != null)
+                    foreach (var packageName in key.GetSubKeyNames())
                     {
-                        var package = new PackageInfo(packageKey);
-                        packages.Add(package);
+                        Console.WriteLine("..." + packageName);
+
+                        using (var packageKey = key.OpenSubKey(packageName))
+                        {
+                            var package = new PackageInfo(packageKey);
+                            packages.Add(package);
+                        }
                     }
-                }
             }
 
             // sort...
             packages.Sort(new DisplayNameComparer());
 
+            var pckgs = packages.Where(p => p.PackageRootFolder.Contains("\\WindowsApps\\") & p.PackageRootFolder.Contains("Microsoft.VCLibs") == false).OrderBy(p => p.Type);
+
             // csv...
             temp = Path.GetTempFileName() + ".csv";
+
             using(var writer = new StreamWriter(temp))
             {
-                writer.WriteLine("PackageId,DisplayName,RootFolder,NumXaml,NumJs,FoundStartPage,Type,MarkedUp");
+                writer.WriteLine("Software,PackageId,DisplayName,RootFolder,NumXaml,NumJs,FoundStartPage,Type,MarkedUp");
 
-                foreach (var package in packages)
+                foreach (var package in pckgs)
                 {
-                    writer.WriteLine("\"{0}\",\"{1}\",\"{2}\",\"{3}\",\"{4}\",\"{5}\",\"{6}\",\"{7}\"", package.PackageId, package.DisplayName, 
-                        package.PackageRootFolder, package.XamlFiles.Count, package.JsFiles.Count, package.FoundStartPage, package.Type, package.MarkedUp);
+                    writer.WriteLine("\"{8}\",\"{0}\",\"{1}\",\"{2}\",\"{3}\",\"{4}\",\"{5}\",\"{6}\",\"{7}\"", package.PackageId, package.DisplayName, package.PackageRootFolder, package.XamlFiles.Count, package.JsFiles.Count, package.FoundStartPage, package.Type, package.MarkedUp, package.PackageId.Substring(0, package.PackageId.IndexOf("_", StringComparison.Ordinal)));
                 }
             }
 
@@ -146,7 +149,7 @@ namespace XamlOrHtml
         {
             public int Compare(PackageInfo x, PackageInfo y)
             {
-                return string.Compare(x.DisplayName, y.DisplayName, true);
+                return String.Compare(x.DisplayName, y.DisplayName, StringComparison.OrdinalIgnoreCase);
             }
         }
     }
