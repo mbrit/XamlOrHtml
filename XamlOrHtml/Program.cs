@@ -82,7 +82,7 @@ namespace XamlOrHtml
                     }
             }
 
-            var pckgs = packages.Where(p => p.PackageRootFolder.Contains("\\WindowsApps\\") & !p.PackageRootFolder.Contains("Microsoft.VCLibs")).OrderBy(p => p.Type);
+            var pckgs = packages.Where(p => p.PackageRootFolder.Contains("\\WindowsApps\\") & !p.PackageRootFolder.Contains("Microsoft.WinJS") & !p.PackageRootFolder.Contains("Microsoft.VCLibs")).OrderBy(p => p.Type);
 
             // csv...
             temp = Path.GetTempFileName() + ".csv";
