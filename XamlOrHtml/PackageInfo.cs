@@ -3,12 +3,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace XamlOrHtml
 {
     internal class PackageInfo
     {
+        private const string XamlExt = ".xaml";
+        private const string XbfExt = ".xbf";
+        private const string JsExt = ".js";
+
         internal string PackageId { get; private set; }
         internal string DisplayName { get; private set; }
         internal string PackageRootFolder { get; private set; }
@@ -20,14 +23,14 @@ namespace XamlOrHtml
 
         internal PackageInfo(RegistryKey key)
         {
-            this.PackageId = Path.GetFileName(key.Name);
-            this.DisplayName = (string)key.GetValue("DisplayName");
-            this.PackageRootFolder = (string)key.GetValue("PackageRootFolder");
+            PackageId = Path.GetFileName(key.Name);
+            DisplayName = (string)key.GetValue("DisplayName");
+            PackageRootFolder = (string)key.GetValue("PackageRootFolder");
 
             // walk the files...
-            this.XamlFiles = new List<string>();
-            this.JsFiles = new List<string>();
-            WalkFiles(new DirectoryInfo(this.PackageRootFolder));
+            XamlFiles = new List<string>();
+            JsFiles = new List<string>();
+            WalkFiles(new DirectoryInfo(PackageRootFolder));
 
             // probe for a start page...
             var appKey = key.OpenSubKey("Applications");
@@ -39,11 +42,14 @@ namespace XamlOrHtml
                     {
                         using (var subAppKey = appKey.OpenSubKey(subAppName))
                         {
-                            var start = (string)subAppKey.GetValue("DefaultStartPage");
-                            if (!(string.IsNullOrEmpty(start)))
+                            if (subAppKey != null)
                             {
-                                FoundStartPage = true;
-                                break;
+                                var start = (string)subAppKey.GetValue("DefaultStartPage");
+                                if (!(string.IsNullOrEmpty(start)))
+                                {
+                                    FoundStartPage = true;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -57,16 +63,16 @@ namespace XamlOrHtml
             {
                 foreach (var file in folder.GetFiles())
                 {
-                    if (string.Compare(file.Extension, ".xaml", true) == 0 || string.Compare(file.Extension, ".xbf", true) == 0)
-                        this.XamlFiles.Add(file.FullName);
-                    else if (string.Compare(file.Extension, ".js", true) == 0)
-                        this.JsFiles.Add(file.FullName);
-                    else if (string.Compare(file.Name, "MarkedUp.winmd") == 0)
-                        this.MarkedUp = true;
+                    if (String.Compare(file.Extension, XamlExt , StringComparison.OrdinalIgnoreCase) == 0 || String.Compare(file.Extension, XbfExt, StringComparison.OrdinalIgnoreCase) == 0)
+                        XamlFiles.Add(file.FullName);
+                    else if (String.Compare(file.Extension, JsExt, StringComparison.OrdinalIgnoreCase) == 0)
+                        JsFiles.Add(file.FullName);
+                    else if (String.CompareOrdinal(file.Name, "MarkedUp.winmd") == 0)
+                        MarkedUp = true;
                 }
 
                 foreach (var child in folder.GetDirectories())
-                    this.WalkFiles(child);
+                    WalkFiles(child);
             }
             catch (Exception ex)
             {
@@ -78,15 +84,16 @@ namespace XamlOrHtml
         {
             get
             {
-                if (this.FoundStartPage)
+                if (FoundStartPage)
                     return PackageType.Html;
 
-                if (this.XamlFiles.Any())
+                if (XamlFiles.Any())
                     return PackageType.Xaml;
-                else if (this.JsFiles.Any())
+                
+                if (JsFiles.Any())
                     return PackageType.Html;
-                else
-                    return PackageType.Unknown;
+                
+                return PackageType.DirectX;
             }
         }
 
@@ -94,7 +101,7 @@ namespace XamlOrHtml
         {
             get
             {
-                return this.PackageId.Contains("Microsoft");
+                return PackageId.Contains("Microsoft");
             }
         }
     }
